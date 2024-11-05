@@ -1,0 +1,60 @@
+trigger:
+  batch: true
+  paths:
+    include:
+      - backend/**
+      - pipelines/backend.yaml
+  branches:
+    include:
+      - feature/*
+      - main
+      - uat
+
+pool: agent
+
+variables:
+  ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+    port: 5002
+    env: prd
+  ${{ elseif startsWith(variables['Build.SourceBranch'], 'refs/heads/uat') }}:
+    port: 5001
+    env: uat
+  ${{ elseif startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/') }}:
+    port: 5000
+    env: dev
+
+jobs:
+  - job: ReactBackend
+    steps:
+      - bash: |
+          #!/bin/bash
+          set -e
+          sudo apt-get update -y
+          sudo apt-get install nodejs npm -y
+          mkdir -p /opt/app/{dev,uat/prd}
+        displayName: Install NodeJS
+      - checkout: self
+        clean: true
+      - bash: |
+          #!/bin/bash
+          set -e
+          cp -avr $(Build.SourcesDirectory)/backend/* /opt/app/$(env)/
+        displayName: Copy Entire Backend
+        condition: ne(variables['env'], '')
+      - bash: |
+          #!/bin/bash
+          set -e
+          sudo npm install pm2@latest -g
+          npm i
+        displayName: Install Packages
+        condition: ne(variables['env'], '')
+        workingDirectory: /opt/app/$(env)
+      - bash: |
+          #!/bin/bash
+          if NODE_PORT=$(port) pm2 start /opt/app/$(env)/index.js --watch /opt/app/$(env) ; then 
+            echo "yes";
+          else
+            pm2 reload all
+          fi
+        displayName: Deploy
+        condition: ne(variables['env'], '')

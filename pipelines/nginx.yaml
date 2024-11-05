@@ -1,0 +1,45 @@
+trigger:
+  batch: true
+  paths:
+    include:
+      - nginx/**
+      - pipelines/nginx.yaml
+
+  # branches:
+  #   include:
+  #     - main
+  #     - uat
+
+pool: agent
+
+jobs:
+  - job: nginx
+    steps:
+      - bash: |
+          #!/bin/bash
+          set -e
+          sudo apt-get update -y
+          sudo apt-get install nginx -y
+          sudo systemctl enable nginx --now
+        displayName: Install Nginx
+      - checkout: self
+        clean: true
+      - bash: |
+          #!/bin/bash
+          set -e
+          sudo mkdir -p /var/www/html/{prd,dev,uat}
+        displayName: setup folders for frontend
+        workingDirectory: nginx
+      - bash: |
+          #!/bin/bash
+          set -e
+          sudo nginx -t -c $(Build.SourcesDirectory)/nginx/nginx.conf
+        displayName: verify Nginx settings
+        workingDirectory: nginx
+      - bash: |
+          #!/bin/bash
+          set -e
+          sudo cp nginx.conf /etc/nginx/nginx.conf
+          sudo systemctl restart nginx
+        displayName: Copy and reload nginx
+        workingDirectory: nginx

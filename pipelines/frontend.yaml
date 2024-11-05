@@ -1,0 +1,53 @@
+trigger:
+  batch: true
+  paths:
+    include:
+      - frontend/**
+      - pipelines/frontend.yaml
+  branches:
+    include:
+      - feature/*
+      - main
+      - uat
+
+pool: agent
+
+variables:
+  ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+    env: prd
+  ${{ elseif startsWith(variables['Build.SourceBranch'], 'refs/heads/uat') }}:
+    env: uat
+  ${{ elseif startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/') }}:
+    env: dev
+
+jobs:
+  - job: React
+    steps:
+      - task: NodeTool@0
+        inputs:
+          versionSource: "spec"
+          versionSpec: "18.x"
+      - bash: |
+          #!/bin/bash
+          set -e
+          npm i
+        displayName: Install Packages
+        workingDirectory: frontend
+      - bash: |
+          #!/bin/bash
+          set -e
+          npm run build
+        displayName: Build
+        condition: ne(variables['env'], '')
+        workingDirectory: frontend
+      - bash: |
+          #!/bin/bash
+          set -e
+          mkdir -p /var/www/html/$(env)
+          rm -rf /var/www/html/$(env)/*
+          sudo mv dist/* /var/www/html/$(env)/
+          sudo chown -R www-data: /var/www/html/$(env)
+          sudo chmod -R 755 /var/www/html/$(env)
+        displayName: Deploy
+        condition: ne(variables['env'], '')
+        workingDirectory: frontend
