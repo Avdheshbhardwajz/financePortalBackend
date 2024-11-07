@@ -5,10 +5,8 @@ trigger:
       - nginx/**
       - pipelines/nginx.yaml
 
-  # branches:
-  #   include:
-  #     - main
-  #     - uat
+variables:
+  - group: nginx
 
 pool: agent
 
@@ -28,8 +26,17 @@ jobs:
           #!/bin/bash
           set -e
           sudo mkdir -p /var/www/html/{prd,dev,uat}
+          mkdir -p /etc/ssl/certs/
+          chown -R www-data: /var/www/html/
         displayName: setup folders for frontend
         workingDirectory: nginx
+      - bash: |
+          #!/bin/bash
+          cp sundarammutual.crt /etc/ssl/certs/
+          echo $(PRIVATE_KEY) | base64 --decode > /etc/ssl/private/sundarammutual.key
+          chown -R www-data: /etc/ssl/certs/
+        workingDirectory: nginx
+        displayName: setup SSL Certs
       - bash: |
           #!/bin/bash
           set -e

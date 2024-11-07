@@ -24,15 +24,19 @@ variables:
     env: dev
 
 jobs:
-  - job: ReactBackend
+  - job: Backend
     steps:
+      - task: NodeTool@0
+        inputs:
+          versionSource: "spec"
+          versionSpec: "18.x"
+        displayName: Install NodeJS
       - bash: |
           #!/bin/bash
           set -e
           sudo apt-get update -y
-          sudo apt-get install nodejs npm -y
           mkdir -p /opt/app/{dev,uat/prd}
-        displayName: Install NodeJS
+        displayName: Update Softwares
       - checkout: self
         clean: true
       - bash: |
