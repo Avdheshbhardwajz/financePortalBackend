@@ -1,30 +1,43 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './pages/Auth';
-//import AdminDashboard from './pages/AdminDashboard';
+import Admin from './pages/Admin';
 import DashboardLayout from './pages/DashboardLayout';
+import Checker from './pages/Checker';
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const token = localStorage.getItem('editorToken');
-  const location = useLocation();
+// Auth Guard Component
+const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const adminToken = localStorage.getItem('adminToken');
+  const makerToken = localStorage.getItem('makerToken');
+  const checkerToken = localStorage.getItem('checkerToken');
 
-  if (!token) {
-    // Redirect to login page if not authenticated
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Redirect based on token type
+  if (adminToken) {
+    return <Navigate to="/admin" replace />;
+  }
+  
+  if (makerToken) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (checkerToken) {
+    return <Navigate to="/checker" replace />;
   }
 
   return <>{children}</>;
 };
 
-// Auth Guard Component
-const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const token = localStorage.getItem('editorToken');
- // const location = useLocation();
+// Protected Route Component
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRole: 'admin' | 'maker' | 'checker';
+}
 
-  if (token) {
-    // Redirect to dashboard if already authenticated
-    return <Navigate to="/dashboard" replace />;
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRole }) => {
+  const token = localStorage.getItem(`${allowedRole}Token`);
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
@@ -34,7 +47,7 @@ const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Public Auth Route - Redirects to dashboard if already logged in */}
+        {/* Public Auth Route */}
         <Route 
           path="/login" 
           element={
@@ -44,24 +57,43 @@ const App: React.FC = () => {
           } 
         />
 
-        {/* Protected Dashboard Route */}
+        {/* Admin Route */}
         <Route
-          path="/dashboard"
+          path="/admin/*"
           element={
-            <ProtectedRoute>
-              {/* <AdminDashboard /> */}
-              <DashboardLayout/>
+            <ProtectedRoute allowedRole="admin">
+              <Admin />
             </ProtectedRoute>
           }
         />
 
-        {/* Default Route - Redirect to login */}
+        {/* Maker Dashboard Route */}
+        <Route
+          path="/dashboard/*"
+          element={
+            <ProtectedRoute allowedRole="maker">
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Checker Dashboard Route */}
+        <Route
+          path="/checker/*"
+          element={
+            <ProtectedRoute allowedRole="checker">
+              <Checker />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default Route */}
         <Route 
           path="/" 
           element={<Navigate to="/login" replace />} 
         />
 
-        {/* Catch all other routes and redirect to login */}
+        {/* Catch all other routes */}
         <Route 
           path="*" 
           element={<Navigate to="/login" replace />} 
