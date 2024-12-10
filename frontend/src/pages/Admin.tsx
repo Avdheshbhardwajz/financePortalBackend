@@ -4,7 +4,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
 import {
   Dialog,
   DialogContent,
@@ -19,9 +18,19 @@ import { createUser, getAllUsers, updateUser, deleteUser, User } from '@/service
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 
+interface DialogState {
+  delete: {
+    open: boolean;
+    user: User | null;
+  };
+  edit: {
+    open: boolean;
+  };
+}
+
 const INITIAL_USER_STATE: User = {
-  firstName: '',
-  lastName: '',
+  first_name: '',
+  last_name: '',
   email: '',
   password: '',
   role: 'maker'
@@ -31,33 +40,44 @@ const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Check for authentication on component mount
-  useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      navigate('/login');
-    }
-    loadUsers();
-  }, []);
-
-  // Logout handler
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('userData');
-    navigate('/login');
-  }, []);
-
   // State management
   const [users, setUsers] = useState<User[]>([]);
   const [newUser, setNewUser] = useState<User>(INITIAL_USER_STATE);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [dialogState, setDialogState] = useState({
+  const [dialogState, setDialogState] = useState<DialogState>({
     delete: { open: false, user: null },
     edit: { open: false }
   });
   const [tables, setTables] = useState<string[]>([]);
+
+  // Load users from backend
+  const loadUsers = useCallback(async () => {
+    try {
+      const response = await getAllUsers();
+      if (response.success) {
+        setUsers(response.data);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load users';
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      });
+    }
+  }, [toast]);
+
+  // Check for authentication on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    loadUsers();
+  }, [navigate, loadUsers]);
 
   // Fetch tables
   useEffect(() => {
@@ -65,43 +85,19 @@ const Admin = () => {
       try {
         const response = await axios.get('http://localhost:8080/table');
         if (response.data.success && response.data.tables) {
-          const tableNames = response.data.tables.map((table: { table_name: string }) => table.table_name);
-          setTables(tableNames);
+          setTables(response.data.tables.map((table: { table_name: string }) => table.table_name));
         }
       } catch (error) {
-        console.error('Error fetching tables:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch tables';
         toast({
           title: "Error",
-          description: "Failed to fetch tables",
+          description: errorMessage,
           variant: "destructive",
         });
       }
     };
     fetchTables();
-  }, []);
-
-  // Load users from backend
-  const loadUsers = async () => {
-    try {
-      const response = await getAllUsers();
-      if (response.success) {
-        const transformedUsers = response.data.map((user: any) => ({
-          id: user.user_id,
-          firstName: user.first_name,
-          lastName: user.last_name,
-          email: user.email,
-          role: user.role
-        }));
-        setUsers(transformedUsers);
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to load users"
-      });
-    }
-  };
+  }, [toast]);
 
   // Form validation
   const validateForm = useCallback((user: User, isEdit = false) => {
@@ -113,7 +109,7 @@ const Admin = () => {
     if (!user.email?.trim()) errors.email = 'Email is required';
     if (!emailRegex.test(user.email)) errors.email = 'Invalid email format';
     if (!isEdit && !user.password) errors.password = 'Password is required';
-    if (!isEdit && user.password?.length < 8) {
+    if (!isEdit && user.password && user.password.length < 8) {
       errors.password = 'Password must be at least 8 characters';
     }
 
@@ -146,31 +142,15 @@ const Admin = () => {
           description: "User created successfully"
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to create user"
+        description: errorMessage
       });
     }
-  }, [newUser, validateForm]);
-
-  // Dialog handlers
-  const handleDeleteClick = useCallback((user: User) => {
-    setDialogState(prev => ({
-      ...prev,
-      delete: { open: true, user }
-    }));
-  }, []);
-
-  const handleEditClick = useCallback((user: User) => {
-    setEditingUser({ ...user });
-    setDialogState(prev => ({
-      ...prev,
-      edit: { open: true }
-    }));
-    setErrors({});
-  }, []);
+  }, [newUser, validateForm, loadUsers, toast]);
 
   // Update user handler
   const handleUpdateUser = useCallback(async () => {
@@ -189,14 +169,7 @@ const Admin = () => {
     }
 
     try {
-      const response = await updateUser(editingUser.id.toString(), {
-        email: editingUser.email,
-        first_name: editingUser.firstName,
-        last_name: editingUser.lastName,
-        role: editingUser.role,
-        password: editingUser.password // Only included if changed
-      });
-
+      const response = await updateUser(editingUser.id.toString(), editingUser);
       if (response.success) {
         setDialogState(prev => ({ ...prev, edit: { open: false } }));
         setEditingUser(null);
@@ -207,14 +180,15 @@ const Admin = () => {
           description: "User updated successfully"
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update user';
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to update user"
+        description: errorMessage
       });
     }
-  }, [editingUser, validateForm]);
+  }, [editingUser, validateForm, loadUsers, toast]);
 
   // Delete user handler
   const handleConfirmDelete = useCallback(async () => {
@@ -234,17 +208,48 @@ const Admin = () => {
           description: "User deleted successfully"
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete user';
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to delete user"
+        description: errorMessage
       });
     }
-  }, [dialogState.delete.user]);
+  }, [dialogState.delete.user, loadUsers, toast]);
+
+  // Logout handler
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('userData');
+    navigate('/login');
+  }, [navigate]);
+
+  // Dialog handlers
+  const handleDeleteClick = useCallback((user: User) => {
+    setDialogState(prev => ({
+      ...prev,
+      delete: { open: true, user }
+    }));
+  }, []);
+
+  const handleEditClick = useCallback((user: User) => {
+    setEditingUser({ ...user });
+    setDialogState(prev => ({
+      ...prev,
+      edit: { open: true }
+    }));
+    setErrors({});
+  }, []);
 
   // Render helpers
-  const renderFormInput = useCallback((field, label, type = 'text', value, onChange) => (
+  const renderFormInput = useCallback((
+    field: string,
+    label: string,
+    type: string = 'text',
+    value: string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  ) => (
     <div className="grid gap-2">
       <Input
         type={type}
@@ -261,6 +266,7 @@ const Admin = () => {
     </div>
   ), [errors]);
 
+  console.log(users)
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* Header with Logout Button */}
@@ -363,7 +369,7 @@ const Admin = () => {
           <div className="overflow-x-auto font-poppins">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
-                <tr>
+                <tr key="header-row">
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
@@ -372,9 +378,10 @@ const Admin = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {users.map((user) => (
-                  <tr key={user.id}>
+                  
+                  <tr key={user._id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {user.firstName} {user.lastName}
+                      {user.first_name} {user.last_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap capitalize">{user.role}</td>

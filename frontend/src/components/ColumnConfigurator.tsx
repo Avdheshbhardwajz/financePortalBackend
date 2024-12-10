@@ -56,7 +56,7 @@ export default function ColumnConfigurator({ tables = [] }: ColumnConfiguratorPr
         }))
         setColumns(columnData)
       }
-    } catch (error) {
+    } catch  {
       showAlertMessage('Failed to fetch columns', 'error')
     } finally {
       setLoading(false)
@@ -84,8 +84,8 @@ export default function ColumnConfigurator({ tables = [] }: ColumnConfiguratorPr
       } else {
         showAlertMessage('Failed to update column status', 'error')
       }
-    } catch (error) {
-      showAlertMessage('Failed to update column status', 'error')
+    } catch  {
+      showAlertMessage('Failed to update column status', "error")
     }
   }
 
