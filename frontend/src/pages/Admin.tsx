@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { useNavigate } from 'react-router-dom';
 import ColumnConfigurator from '@/components/ColumnConfigurator';
+import DropdownManager from '@/components/DropdownManager';
 import { createUser, getAllUsers, updateUser, deleteUser, User } from '@/services/userApi';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
@@ -547,6 +548,7 @@ const Admin = () => {
       </Dialog>
 
       <ColumnConfigurator tables={tables} />
+      <DropdownManager tables={tables} />
     </div>
   );
 };

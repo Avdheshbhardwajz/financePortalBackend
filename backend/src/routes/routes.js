@@ -9,9 +9,10 @@ const { table } = require('../controllers/table/table.js');
 const { approve } = require('../controllers/approve/approve.js');
 const { reject } = require('../controllers/reject/reject.js');
 const { tableData } = require('../controllers/tableData/tableData.js');
-const { columnStatusPermission } = require('../controllers/columnStatusPermission/columnStatusPermission.js');
+const { ColumnPermission } = require('../controllers/ColumnPermission/ColumnPermission.js');
 const { fetchColumn } = require('../controllers/fetchColumn/fetchColumn.js');
-
+const {fetchColumnDropdown} = require('../controllers/fetchColumnDropdown/fetchColumnDropdown.js');
+const {updateColumnDropdown} = require('../controllers/updateColumnDropdown/updateColumnDropdown.js');
 
 // Authentication routes
 router.post('/signin', signin);
@@ -34,7 +35,11 @@ router.post('/approve', approve);
 router.post('/reject', reject);
 
 //column configuration routes
-router.post('/columnstatuspermission', columnStatusPermission);
+router.post('/columnpermission', ColumnPermission);
 router.post('/fetchcolumn', fetchColumn);
+
+//dropdown configuratuon routes 
+router.post('/fetchcolumnDropdown', fetchColumnDropdown);
+router.post('/updatecolumnDropdown', updateColumnDropdown);
 
 module.exports = router;

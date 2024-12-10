@@ -39,25 +39,42 @@ export default function ColumnConfigurator({ tables = [] }: ColumnConfiguratorPr
         return
       }
 
-      // Then fetch the current column statuses
-      const statusResponse = await axios.post('http://localhost:8080/columnstatuspermission', {
-        table_name: tableName,
-        action: 'get'
-      })
+      // Create a map of all columns with default status
+      const allColumns = columnsResponse.data.columns.map((col: string) => ({
+        column_name: col,
+        column_status: 'non-editable' as const
+      }))
 
-      if (statusResponse.data.success && statusResponse.data.column_list) {
-        // Use the existing statuses from the backend
-        setColumns(statusResponse.data.column_list)
-      } else {
-        // If no existing statuses, set all to non-editable by default
-        const columnData = columnsResponse.data.columns.map((col: string) => ({
-          column_name: col,
-          column_status: 'non-editable' as const
-        }))
-        setColumns(columnData)
+      try {
+        // Then fetch the current column statuses
+        const statusResponse = await axios.post('http://localhost:8080/ColumnPermission', {
+          table_name: tableName,
+          action: 'get'
+        })
+
+        if (statusResponse.data.success && statusResponse.data.column_list) {
+          // Create a map of existing statuses
+          const existingStatuses = new Map(
+            statusResponse.data.column_list.map((col: ColumnStatus) => 
+              [col.column_name, col.column_status]
+            )
+          )
+
+          // Update status for columns that have existing permissions
+          allColumns.forEach(col => {
+            if (existingStatuses.has(col.column_name)) {
+              col.column_status = existingStatuses.get(col.column_name)!
+            }
+          })
+        }
+      } catch (error) {
+        // If status fetch fails, we still show all columns with default status
+        console.error('Failed to fetch column statuses:', error)
       }
-    } catch (error) {
-      showAlertMessage('Failed to fetch columns', 'error')
+
+      setColumns(allColumns)
+    } catch (error: any) {
+      showAlertMessage(error.response?.data?.message || 'Failed to fetch columns', 'error')
     } finally {
       setLoading(false)
     }
@@ -65,27 +82,25 @@ export default function ColumnConfigurator({ tables = [] }: ColumnConfiguratorPr
 
   const handleColumnStatusChange = async (columnName: string, newStatus: 'editable' | 'non-editable') => {
     try {
-      const response = await axios.post('http://localhost:8080/columnstatuspermission', {
+      const updatedColumns = columns.map(col => 
+        col.column_name === columnName 
+          ? { ...col, column_status: newStatus }
+          : col
+      )
+
+      const response = await axios.post('http://localhost:8080/ColumnPermission', {
         table_name: selectedTable,
-        column_list: columns.map(col => 
-          col.column_name === columnName 
-            ? { column_name: columnName, column_status: newStatus }
-            : col
-        )
+        column_list: updatedColumns
       })
 
       if (response.data.success) {
-        setColumns(columns.map(col => 
-          col.column_name === columnName 
-            ? { ...col, column_status: newStatus }
-            : col
-        ))
+        setColumns(updatedColumns)
         showAlertMessage(`Column status updated successfully`, 'success')
       } else {
-        showAlertMessage('Failed to update column status', 'error')
+        showAlertMessage(response.data.message || 'Failed to update column status', 'error')
       }
-    } catch (error) {
-      showAlertMessage('Failed to update column status', 'error')
+    } catch (error: any) {
+      showAlertMessage(error.response?.data?.message || 'Failed to update column status', 'error')
     }
   }
 

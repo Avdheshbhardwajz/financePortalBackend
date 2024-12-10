@@ -1,6 +1,6 @@
 const { client_update } = require('../../configuration/database/databaseUpdate.js');
 
-exports.columnStatusPermission = async (req, res) => {
+exports.ColumnPermission = async (req, res) => {
     const { table_name, column_list, action } = req.body;
 
     if (!table_name) {
