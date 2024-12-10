@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, AlertCircle, LogOut, Plus, Minus, Eye } from 'lucide-react'
+import { Check, X, AlertCircle, LogOut, Plus, Minus } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -13,6 +13,27 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import logo from "../assets/Logo.png"
 import { useToast } from "@/hooks/use-toast"
 import { fetchChangeTrackerData, approveChange, rejectChange } from '@/services/api'
+
+interface ApiResponse<T> {
+  success: boolean
+  message?: string
+  data?: T
+}
+
+
+
+
+interface ChangeTrackerData {
+  request_id: string
+  id?: string
+  maker?: string
+  created_at: string
+  comments?: string
+  table_name: string
+  status: 'pending' | 'approved' | 'rejected'
+  new_data?: Record<string, unknown>
+  old_data?: Record<string, unknown>
+}
 
 interface ColumnChange {
   column: string
@@ -29,9 +50,9 @@ interface Change {
   changes: ColumnChange[]
   tableName: string
   status: 'pending' | 'approved' | 'rejected'
-  newValues: Record<string, any>
-  oldValues: Record<string, any>
-  rowData: Record<string, any>
+  newValues: Record<string, unknown>
+  oldValues: Record<string, unknown>
+  rowData: Record<string, unknown>
   changedColumns: string[]
 }
 
@@ -56,12 +77,12 @@ export default function EnhancedCheckerPage() {
   const loadPendingChanges = async () => {
     try {
       setIsLoading(true)
-      const response = await fetchChangeTrackerData()
+      const response: ApiResponse<ChangeTrackerData[]> = await fetchChangeTrackerData()
       
-      if (response.success) {
+      if (response.success && response.data) {
         const transformedChanges: Change[] = response.data
-          .filter((change: any) => change.status === 'pending')
-          .map((change: any) => {
+          .filter((change: ChangeTrackerData) => change.status === 'pending')
+          .map((change: ChangeTrackerData) => {
             // Calculate changed columns by comparing old_data and new_data
             const changedColumns: string[] = []
             const newData = change.new_data || {}
@@ -74,7 +95,7 @@ export default function EnhancedCheckerPage() {
             })
 
             return {
-              id: change.request_id || change.id,
+              id: change.request_id || change.id || '',
               request_id: change.request_id,
               user: change.maker || 'Unknown User',
               dateTime: new Date(change.created_at).toLocaleString(),
@@ -100,12 +121,12 @@ export default function EnhancedCheckerPage() {
           description: response.message || "Failed to fetch pending changes"
         })
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading pending changes:', error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to fetch pending changes"
+        description: error instanceof Error ? error.message : "Failed to fetch pending changes"
       })
     } finally {
       setIsLoading(false)
@@ -133,10 +154,10 @@ export default function EnhancedCheckerPage() {
     setSelectedChanges(prev => ({ ...prev, [changeId]: !prev[changeId] }))
   }
 
-  const handleView = (rowData: Record<string, string>) => {
-    setCurrentViewData(rowData)
-    setIsViewModalOpen(true)
-  }
+  // const handleView = (rowData: Record<string, string>) => {
+  //   setCurrentViewData(rowData)
+  //   setIsViewModalOpen(true)
+  // }
 
   const handleApprove = async (changeId: string) => {
     try {
@@ -144,7 +165,7 @@ export default function EnhancedCheckerPage() {
       const change = pendingChanges.find(c => c.id === changeId)
       if (!change) return
 
-      const response = await approveChange(change.request_id)
+      const response: ApiResponse<unknown> = await approveChange(change.request_id)
       
       if (response.success) {
         toast({
@@ -159,12 +180,12 @@ export default function EnhancedCheckerPage() {
           description: response.message || "Failed to approve change"
         })
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error approving change:', error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to approve change"
+        description: error instanceof Error ? error.message : "Failed to approve change"
       })
     } finally {
       setIsLoading(false)
@@ -183,7 +204,7 @@ export default function EnhancedCheckerPage() {
     try {
       setIsLoading(true);
       const selectedIds = Object.entries(selectedChanges)
-        .filter(([_, isSelected]) => isSelected)
+        .filter(([, isSelected]) => isSelected)
         .map(([id]) => id);
       
       const itemsToReject = currentRejectId === 'bulk'
@@ -193,7 +214,7 @@ export default function EnhancedCheckerPage() {
         : pendingChanges.filter(change => change.id === currentRejectId);
   
       for (const change of itemsToReject) {
-        const response = await rejectChange(change.request_id, rejectReason);
+        const response: ApiResponse<unknown> = await rejectChange(change.request_id, rejectReason);
         if (!response.success) {
           toast({
             variant: "destructive",
@@ -212,57 +233,18 @@ export default function EnhancedCheckerPage() {
       setCurrentRejectId(null);
       setSelectedChanges({});
       await loadPendingChanges();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error rejecting changes:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to reject changes"
+        description: error instanceof Error ? error.message : "Failed to reject changes"
       });
     } finally {
       setIsLoading(false);
     }
   };
-  // const submitReject = async () => {
-  //   if (!currentRejectId || !rejectReason.trim()) {
-  //     return
-  //   }
-
-  //   try {
-  //     setIsLoading(true)
-  //     const change = pendingChanges.find(c => c.id === currentRejectId)
-  //     if (!change) return
-
-  //     const response = await rejectChange(change.request_id, rejectReason)
-
-  //     if (response.success) {
-  //       toast({
-  //         title: "Success",
-  //         description: "Change rejected successfully"
-  //       })
-  //       await loadPendingChanges()
-  //       setIsRejectModalOpen(false)
-  //       setRejectReason("")
-  //       setCurrentRejectId(null)
-  //     } else {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Error",
-  //         description: response.message || "Failed to reject change"
-  //       })
-  //     }
-  //   } catch (error: any) {
-  //     console.error('Error rejecting change:', error)
-  //     toast({
-  //       variant: "destructive",
-  //       title: "Error",
-  //       description: error.message || "Failed to reject change"
-  //     })
-  //   } finally {
-  //     setIsLoading(false)
-  //   }
-  // }
-
+  
   const handleLogout = () => {
     localStorage.removeItem("checkerToken")
     localStorage.removeItem('userData');
@@ -277,7 +259,7 @@ export default function EnhancedCheckerPage() {
     try {
       setIsLoading(true);
       const selectedIds = Object.entries(selectedChanges)
-        .filter(([_, isSelected]) => isSelected)
+        .filter(([, isSelected]) => isSelected)
         .map(([id]) => id);
       
       // If no items are selected, approve all items in the table
@@ -286,7 +268,7 @@ export default function EnhancedCheckerPage() {
         : pendingChanges.filter(change => change.tableName === tableName);
   
       for (const change of itemsToApprove) {
-        const response = await approveChange(change.request_id);
+        const response: ApiResponse<unknown> = await approveChange(change.request_id);
         if (!response.success) {
           toast({
             variant: "destructive",
@@ -302,12 +284,12 @@ export default function EnhancedCheckerPage() {
       });
       await loadPendingChanges();
       setSelectedChanges({});
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error approving changes:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to approve changes"
+        description: error instanceof Error ? error.message : "Failed to approve changes"
       });
     } finally {
       setIsLoading(false);
@@ -316,7 +298,7 @@ export default function EnhancedCheckerPage() {
 
   const handleRejectAll = (tableName: string) => {
     const selectedIds = Object.entries(selectedChanges)
-      .filter(([_, isSelected]) => isSelected)
+      .filter(([ ,isSelected]) => isSelected)
       .map(([id]) => id);
     
     // If no items are selected, reject all items in the table

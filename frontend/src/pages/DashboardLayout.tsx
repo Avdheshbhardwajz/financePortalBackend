@@ -70,12 +70,12 @@ export default function DashboardLayout() {
       setFile(null)
       // Refresh tables after successful upload
       refreshTables()
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload error:', error)
       toast({
         variant: "destructive",
         title: "Upload Error",
-        description: error.message || 'Failed to upload file'
+        description: error instanceof Error ? error.message : 'Failed to upload file'
       })
     }
   }

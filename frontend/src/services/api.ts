@@ -68,7 +68,7 @@ export const rejectChange = async (
   }
 };
 
-const handleApiError = (error: any): never => {
+const handleApiError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message || error.message;
     throw new Error(message);

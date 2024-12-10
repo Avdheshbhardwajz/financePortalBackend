@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { PlusCircle, Trash2, Edit2, Eye, EyeOff, LogOut } from 'lucide-react';
+import { Trash2, Edit2, Eye, EyeOff, LogOut } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+
 import {
   Dialog,
   DialogContent,
@@ -69,6 +69,7 @@ const Admin = () => {
           setTables(tableNames);
         }
       } catch (error) {
+        console.error('Error fetching tables:', error);
         toast({
           title: "Error",
           description: "Failed to fetch tables",
