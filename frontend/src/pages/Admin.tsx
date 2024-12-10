@@ -14,9 +14,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useNavigate } from 'react-router-dom';
-import DropdownColumnsManager from '@/components/DropdownManager';
+import ColumnConfigurator from '@/components/ColumnConfigurator';
 import { createUser, getAllUsers, updateUser, deleteUser, User } from '@/services/userApi';
 import { useToast } from '@/hooks/use-toast';
+import axios from 'axios';
 
 const INITIAL_USER_STATE: User = {
   firstName: '',
@@ -56,6 +57,27 @@ const Admin = () => {
     delete: { open: false, user: null },
     edit: { open: false }
   });
+  const [tables, setTables] = useState<string[]>([]);
+
+  // Fetch tables
+  useEffect(() => {
+    const fetchTables = async () => {
+      try {
+        const response = await axios.get('http://localhost:8080/table');
+        if (response.data.success && response.data.tables) {
+          const tableNames = response.data.tables.map((table: { table_name: string }) => table.table_name);
+          setTables(tableNames);
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch tables",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchTables();
+  }, []);
 
   // Load users from backend
   const loadUsers = async () => {
@@ -523,7 +545,7 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
-      <DropdownColumnsManager/>
+      <ColumnConfigurator tables={tables} />
     </div>
   );
 };

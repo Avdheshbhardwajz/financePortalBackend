@@ -9,6 +9,9 @@ const { table } = require('../controllers/table/table.js');
 const { approve } = require('../controllers/approve/approve.js');
 const { reject } = require('../controllers/reject/reject.js');
 const { tableData } = require('../controllers/tableData/tableData.js');
+const { columnStatusPermission } = require('../controllers/columnStatusPermission/columnStatusPermission.js');
+const { fetchColumn } = require('../controllers/fetchColumn/fetchColumn.js');
+
 
 // Authentication routes
 router.post('/signin', signin);
@@ -29,5 +32,9 @@ router.get('/tableData/:name', tableData);
 // Request management routes
 router.post('/approve', approve);
 router.post('/reject', reject);
+
+//column configuration routes
+router.post('/columnstatuspermission', columnStatusPermission);
+router.post('/fetchcolumn', fetchColumn);
 
 module.exports = router;
