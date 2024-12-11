@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 
  import EditorLogin from '@/components/Editorlogin';
 
-import Smalllogo from "../assets/SM_logo_531x107 2.png";
+//import Smalllogo from "../assets/SM_logo_531x107 2.png";
 import logo from "../assets/Logo.png";
 
 const Auth: React.FC = () => {

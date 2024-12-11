@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, KeyboardEvent, ChangeEvent } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Plus, X } from 'lucide-react'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 
 interface DropdownOption {
   value: string;
@@ -16,35 +16,60 @@ interface DropdownManagerProps {
   tables: string[];
 }
 
-export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
-  const [selectedTable, setSelectedTable] = useState('')
-  const [columns, setColumns] = useState<string[]>([])
-  const [selectedColumn, setSelectedColumn] = useState('')
-  const [options, setOptions] = useState<DropdownOption[]>([])
-  const [newOption, setNewOption] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [alert, setAlert] = useState({ show: false, message: '', type: 'info' as 'info' | 'error' | 'success' })
+interface AlertState {
+  show: boolean;
+  message: string;
+  type: 'error' | 'success' | 'info';
+}
 
-  // Fetch columns when table is selected
+interface FetchColumnResponse {
+  success: boolean;
+  columns?: string[];
+  message?: string;
+}
+
+interface FetchDropdownResponse {
+  success: boolean;
+  data?: string[];
+  message?: string;
+}
+
+interface UpdateDropdownResponse {
+  success: boolean;
+  message?: string;
+}
+
+export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
+  const [selectedTable, setSelectedTable] = useState<string>('')
+  const [columns, setColumns] = useState<string[]>([])
+  const [selectedColumn, setSelectedColumn] = useState<string>('')
+  const [options, setOptions] = useState<DropdownOption[]>([])
+  const [newOption, setNewOption] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
+  const [alert, setAlert] = useState<AlertState>({ 
+    show: false, 
+    message: '', 
+    type: 'info' 
+  })
+
   useEffect(() => {
     if (selectedTable) {
       fetchColumns(selectedTable)
-      setSelectedColumn('') // Reset column selection when table changes
-      setOptions([]) // Clear options when table changes
+      setSelectedColumn('')
+      setOptions([])
     }
   }, [selectedTable])
 
-  // Fetch existing options when column is selected
   useEffect(() => {
     if (selectedTable && selectedColumn) {
       fetchExistingOptions()
     }
   }, [selectedTable, selectedColumn])
 
-  const fetchColumns = async (tableName: string) => {
+  const fetchColumns = async (tableName: string): Promise<void> => {
     try {
       setLoading(true)
-      const response = await axios.post(`http://localhost:8080/fetchcolumn`, {
+      const response = await axios.post<FetchColumnResponse>(`http://localhost:8080/fetchcolumn`, {
         table_name: tableName
       })
 
@@ -60,16 +85,15 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
     }
   }
 
-  const fetchExistingOptions = async () => {
+  const fetchExistingOptions = async (): Promise<void> => {
     try {
       setLoading(true)
-      const response = await axios.post('http://localhost:8080/fetchcolumnDropdown', {
+      const response = await axios.post<FetchDropdownResponse>('http://localhost:8080/fetchcolumnDropdown', {
         table_name: selectedTable,
         column_name: selectedColumn
       })
 
       if (response.data.success && response.data.data) {
-        // Convert array of options to array of DropdownOption objects
         const existingOptions = Array.isArray(response.data.data) 
           ? response.data.data.map((opt: string) => ({ value: opt }))
           : []
@@ -80,9 +104,9 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
       } else {
         setOptions([])
       }
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        // No options exist yet for this column
+    } catch (error) {
+      const axiosError = error as AxiosError
+      if (axiosError.response?.status === 404) {
         setOptions([])
       } else {
         showAlert('Error fetching existing options', 'error')
@@ -92,7 +116,7 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
     }
   }
 
-  const handleAddOption = () => {
+  const handleAddOption = (): void => {
     if (!newOption.trim()) {
       showAlert('Option cannot be empty', 'error')
       return
@@ -107,14 +131,14 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
     setNewOption('')
   }
 
-  const handleRemoveOption = (optionToRemove: string) => {
+  const handleRemoveOption = (optionToRemove: string): void => {
     setOptions(options.filter(opt => opt.value !== optionToRemove))
   }
 
-  const handleSaveOptions = async () => {
+  const handleSaveOptions = async (): Promise<void> => {
     try {
       setLoading(true)
-      const response = await axios.post('http://localhost:8080/updatecolumnDropdown', {
+      const response = await axios.post<UpdateDropdownResponse>('http://localhost:8080/updatecolumnDropdown', {
         table_name: selectedTable,
         column_name: selectedColumn,
         dropdown_options: options.map(opt => opt.value)
@@ -122,7 +146,6 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
 
       if (response.data.success) {
         showAlert('Options saved successfully', 'success')
-        // Refresh the options after saving
         fetchExistingOptions()
       } else {
         showAlert(response.data.message || 'Failed to save options', 'error')
@@ -134,7 +157,17 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
     }
   }
 
-  const showAlert = (message: string, type: 'error' | 'success' | 'info') => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      handleAddOption()
+    }
+  }
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setNewOption(e.target.value)
+  }
+
+  const showAlert = (message: string, type: AlertState['type']): void => {
     setAlert({ show: true, message, type })
     setTimeout(() => setAlert({ show: false, message: '', type: 'info' }), 3000)
   }
@@ -158,14 +191,9 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
         )}
 
         <div className="space-y-6">
-          {/* Table Selection */}
           <div className="space-y-2">
             <Label>Select Table</Label>
-            <Select value={selectedTable} onValueChange={(value) => {
-              setSelectedTable(value)
-              setSelectedColumn('')
-              setOptions([])
-            }}>
+            <Select value={selectedTable} onValueChange={setSelectedTable}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a table" />
               </SelectTrigger>
@@ -179,7 +207,6 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
             </Select>
           </div>
 
-          {/* Column Selection */}
           {selectedTable && (
             <div className="space-y-2">
               <Label>Select Column</Label>
@@ -201,19 +228,14 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
             </div>
           )}
 
-          {/* Options Management */}
           {selectedColumn && (
             <div className="space-y-4">
               <div className="flex gap-2">
                 <Input
                   placeholder="Add new option"
                   value={newOption}
-                  onChange={(e) => setNewOption(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddOption()
-                    }
-                  }}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
                 />
                 <Button 
                   onClick={handleAddOption}
@@ -224,14 +246,12 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
                 </Button>
               </div>
 
-              {/* Options List with count */}
               {options.length > 0 && (
                 <div className="text-sm text-gray-500 mb-2">
                   {options.length} option{options.length !== 1 ? 's' : ''} available
                 </div>
               )}
               
-              {/* Options List */}
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {options.map((option, index) => (
                   <div 
@@ -251,7 +271,6 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
                 ))}
               </div>
 
-              {/* Save Button */}
               <Button 
                 onClick={handleSaveOptions}
                 className="w-full"

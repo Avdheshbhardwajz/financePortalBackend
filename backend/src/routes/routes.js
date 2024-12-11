@@ -11,6 +11,7 @@ const { reject } = require('../controllers/reject/reject.js');
 const { tableData } = require('../controllers/tableData/tableData.js');
 const { ColumnPermission } = require('../controllers/ColumnPermission/ColumnPermission.js');
 const { fetchColumn } = require('../controllers/fetchColumn/fetchColumn.js');
+const { fetchColumnStatus } = require('../controllers/fetchColumnStatus/fetchColumnStatus.js');
 const {fetchColumnDropdown} = require('../controllers/fetchColumnDropdown/fetchColumnDropdown.js');
 const {updateColumnDropdown} = require('../controllers/updateColumnDropdown/updateColumnDropdown.js');
 
@@ -37,6 +38,8 @@ router.post('/reject', reject);
 //column configuration routes
 router.post('/columnpermission', ColumnPermission);
 router.post('/fetchcolumn', fetchColumn);
+router.post('/fetchColumnStatus', fetchColumnStatus);
+
 
 //dropdown configuratuon routes 
 router.post('/fetchcolumnDropdown', fetchColumnDropdown);

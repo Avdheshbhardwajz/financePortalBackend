@@ -2,6 +2,14 @@ import axios from 'axios';
 import { RequestDataPayload } from '../types/requestData';
 import { ChangeTrackerResponse, ApproveRejectResponse } from '../types/checkerData';
 
+interface ColumnStatusResponse {
+  success: boolean;
+  column_list: {
+    column_name: string;
+    column_status: 'editable' | 'non-editable';
+  }[];
+}
+
 const API_BASE_URL = 'http://localhost:8080';
 const userData = JSON.parse(localStorage.getItem('userData') || '{}');
 const checkerId = userData.user_id;
@@ -63,6 +71,17 @@ export const rejectChange = async (
     } else {
       throw new Error(response.data.message || 'Failed to reject change');
     }
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+export const fetchColumnStatus = async (tableName: string): Promise<ColumnStatusResponse> => {
+  try {
+    const response = await axios.post<ColumnStatusResponse>(`${API_BASE_URL}/fetchColumnStatus/${tableName}`);
+   
+    return response.data;
+    
   } catch (error) {
     throw handleApiError(error);
   }

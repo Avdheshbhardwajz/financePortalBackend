@@ -2,27 +2,17 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
 import { useToast } from '@/hooks/use-toast'
 import { GridResponse, RowData, ColumnConfig } from '@/types/grid'
+import { fetchColumnStatus } from '@/services/api'
 
 interface UseGridDataProps {
   tableName: string
   initialPageSize?: number
 }
 
-interface ApiResponse {
-  data: any[]
-  pagination: {
-    total: number
-    totalPages: number
-    currentPage: number
-    pageSize: number
-  }
-}
-
 export const useGridData = ({ tableName, initialPageSize = 20 }: UseGridDataProps) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rowData, setRowData] = useState<RowData[]>([])
-  const [headers, setHeaders] = useState<string[]>([])
   const [columnConfigs, setColumnConfigs] = useState<{ [key: string]: ColumnConfig }>({})
   const [pagination, setPagination] = useState({
     total: 0,
@@ -33,9 +23,12 @@ export const useGridData = ({ tableName, initialPageSize = 20 }: UseGridDataProp
   
   const { toast } = useToast()
   const abortControllerRef = useRef<AbortController | null>(null)
-  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const getColumnEditType = useCallback((header: string): string => {
+  const getColumnEditType = useCallback((header: string, isEditable: boolean): string => {
+    if (!isEditable) {
+      return '';
+    }
+
     if (header.includes('date') || header.includes('_on')) {
       return 'date calendar'
     }
@@ -51,131 +44,116 @@ export const useGridData = ({ tableName, initialPageSize = 20 }: UseGridDataProp
     if (header.includes('state') || header.includes('zone') || header.includes('category')) {
       return 'dropdown'
     }
-    return 'text'
+    return 'text free text'
   }, [])
 
-  const formatHeaderName = useCallback((header: string): string => {
-    return header
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  }, [])
+  const fetchTableData = useCallback(async (editableColumns: Set<string>) => {
+    try {
+      const response = await axios.get<GridResponse>(`http://localhost:8080/tableData/${tableName}`, {
+        params: {
+          page: pagination.currentPage,
+          pageSize: pagination.pageSize,
+        },
+        signal: abortControllerRef.current?.signal,
+      })
 
-  const createColumnConfigs = useCallback((firstRow: any) => {
-    const configs: { [key: string]: ColumnConfig } = {}
-    Object.keys(firstRow).forEach(header => {
-      configs[header] = {
-        field: header,
-        headerName: formatHeaderName(header),
-        isEditable: !['created_by', 'modified_by', 'created_on', 'modified_on', 'dim_branch_sk'].includes(header),
-        editType: getColumnEditType(header)
-      }
-    })
-    return configs
-  }, [formatHeaderName, getColumnEditType])
+      const { data, headers } = response.data
 
-  const fetchData = useCallback(async (page: number, pageSize: number) => {
-    if (!tableName) {
-      console.error('Table name is required')
-      return
+      // Create column configs using the editableColumns information
+      const configs = headers.reduce((acc, header) => {
+        const isEditable = editableColumns.has(header)
+        acc[header] = {
+          field: header,
+          headerName: header.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+          isEditable: isEditable,
+          editType: getColumnEditType(header, isEditable)
+        }
+        return acc
+      }, {} as { [key: string]: ColumnConfig })
+
+      setColumnConfigs(configs)
+      setRowData(data)
+      setPagination(prev => ({
+        ...prev,
+        total: response.data.pagination.total,
+        totalPages: response.data.pagination.totalPages
+      }))
+    } catch (error: any) {
+      if (error.name === 'AbortError') return
+      throw error
     }
+  }, [tableName, pagination.currentPage, pagination.pageSize, getColumnEditType])
 
-    // Clear any existing timeout
-    if (fetchTimeoutRef.current) {
-      clearTimeout(fetchTimeoutRef.current)
-    }
-
-    // Cancel any ongoing requests
+  const fetchData = useCallback(async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
-
-    // Create new abort controller for this request
     abortControllerRef.current = new AbortController()
 
     try {
       setIsLoading(true)
       setError(null)
 
-      const response = await axios.get<ApiResponse>(
-        `http://localhost:8080/tableData/${tableName}`,
-        {
-          params: {
-            page,
-            pageSize
-          },
-          signal: abortControllerRef.current.signal
-        }
+      // First, fetch column status
+      const columnStatusResponse = await fetchColumnStatus(tableName)
+      
+      // Create a set of editable columns
+      const editableColumns = new Set(
+        columnStatusResponse.column_list
+          .filter(col => col.column_status === 'editable')
+          .map(col => col.column_name)
       )
 
-      if (!response.data?.data) {
-        throw new Error('Invalid response format')
-      }
-
-      const { data, pagination: paginationData } = response.data
-
-      if (data.length > 0) {
-        setColumnConfigs(createColumnConfigs(data[0]))
-        setHeaders(Object.keys(data[0]))
-      }
-
-      setRowData(data)
-      setPagination(paginationData)
-    } catch (err: any) {
-      if (err.name === 'CanceledError') {
-        // Request was cancelled, ignore error
-        return
-      }
-      
-      console.error('Error fetching data:', err)
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to load data'
+      // Then fetch table data with editable columns information
+      await fetchTableData(editableColumns)
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch data'
       setError(errorMessage)
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: errorMessage
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
       })
     } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
-  }, [tableName, createColumnConfigs, toast])
+  }, [tableName, fetchTableData, toast])
 
   const handlePageChange = useCallback((page: number) => {
-    setPagination(prev => ({ ...prev, currentPage: page }))
-    fetchData(page, pagination.pageSize)
-  }, [fetchData, pagination.pageSize])
+    setPagination(prev => ({
+      ...prev,
+      currentPage: page
+    }))
+    fetchData()
+  }, [fetchData])
 
-  const handlePageSizeChange = useCallback((newPageSize: number) => {
-    setPagination(prev => ({ ...prev, pageSize: newPageSize, currentPage: 1 }))
-    fetchData(1, newPageSize)
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPagination(prev => ({
+      ...prev,
+      pageSize: size,
+      currentPage: 1
+    }))
+    fetchData()
   }, [fetchData])
 
   const refreshData = useCallback(() => {
-    fetchData(pagination.currentPage, pagination.pageSize)
-  }, [fetchData, pagination.currentPage, pagination.pageSize])
+    fetchData()
+  }, [fetchData])
 
   useEffect(() => {
-    // Set a small delay before fetching to prevent rapid consecutive calls
-    fetchTimeoutRef.current = setTimeout(() => {
-      fetchData(pagination.currentPage, pagination.pageSize)
-    }, 300)
-
+    fetchData()
     return () => {
-      // Cleanup function
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current)
-      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
     }
-  }, [tableName, fetchData, pagination.currentPage, pagination.pageSize])
+  }, [fetchData])
 
   return {
     isLoading,
     error,
     rowData,
-    headers,
     columnConfigs,
     pagination,
     handlePageChange,
