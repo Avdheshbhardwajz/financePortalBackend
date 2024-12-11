@@ -10,13 +10,14 @@ import { Pencil, Plus } from 'lucide-react'
 import { useGridData } from '@/hooks/useGridData'
 import { submitRequestData } from '@/services/api'
 import { RequestDataPayload } from '@/types/requestData'
+import { toast } from '@/hooks/use-toast'
 
 interface GridTableProps {
   tableName: string
   initialPageSize?: number
 }
 
-const GridTable = memo(({
+export const GridTable = memo(({
   tableName,
   initialPageSize = 20
 }: GridTableProps) => {
@@ -25,6 +26,7 @@ const GridTable = memo(({
     error,
     rowData,
     columnConfigs,
+    columnPermissions,
     pagination,
     handlePageChange,
     handlePageSizeChange,
@@ -40,22 +42,34 @@ const GridTable = memo(({
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const handleEditClick = useCallback((row: any) => {
-    setSelectedRow(row)
-    setEditedData({...row})
-    setValidationErrors({})
-    setIsEditDialogOpen(true)
-  }, [])
+    const hasEditableColumns = Object.values(columnPermissions).some(isEditable => isEditable);
+    if (!hasEditableColumns) {
+      toast({
+        title: "Cannot Edit",
+        description: "None of the columns are editable for this table",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSelectedRow(row);
+    setEditedData({...row});
+    setValidationErrors({});
+    setIsEditDialogOpen(true);
+  }, [columnPermissions]);
 
   const handleInputChange = useCallback((field: string, value: any) => {
+    if (!columnPermissions[field]) return; // Don't allow changes to non-editable fields
+    
     setEditedData(prev => ({
       ...prev,
       [field]: value
-    }))
+    }));
     setValidationErrors(prev => ({
       ...prev,
       [field]: ''
-    }))
-  }, [])
+    }));
+  }, [columnPermissions]);
 
   const handleEditSave = useCallback(async () => {
     try {
@@ -63,12 +77,12 @@ const GridTable = memo(({
 
       setIsSaving(true);
       setSaveError(null);
-      const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
       const payload: RequestDataPayload = {
         table_name: tableName,
         old_values: selectedRow,
         new_values: editedData,
-        maker_id: userData.user_id, // Using a default user ID temporarily
+        maker_id: userData.user_id,
         comments: ''
       };
 
@@ -80,61 +94,60 @@ const GridTable = memo(({
       setValidationErrors({});
     } catch (error) {
       console.error('Error saving changes:', error);
-      setSaveError(error instanceof Error ? error.message : 'Failed to save changes');
+      setSaveError('Failed to save changes. Please try again.');
     } finally {
       setIsSaving(false);
     }
   }, [refreshData, selectedRow, editedData, tableName]);
 
   const handleAddSuccess = useCallback(() => {
-    refreshData()
-    setIsAddDialogOpen(false)
-  }, [refreshData])
+    refreshData();
+    setIsAddDialogOpen(false);
+  }, [refreshData]);
 
   const columnDefs = useMemo(() => {
-    const baseColumns: ColDef[] = Object.values(columnConfigs).map(config => ({
-      field: config.field,
-      headerName: config.headerName,
-      editable: config.isEditable,
-      sortable: true,
-      filter: true,
-      resizable: true,
-      flex: 1,
-      minWidth: 100
-    }))
-
     return [
-      ...baseColumns,
       {
         headerName: 'Actions',
         field: 'actions',
-        sortable: false,
-        filter: false,
         width: 100,
-        cellRenderer: (params: any) => (
-          <div className="flex items-center justify-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleEditClick(params.data)
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
-        )
-      }
-    ]
-  }, [columnConfigs, handleEditClick])
+        cellRenderer: (params: any) => {
+          const hasEditableColumns = Object.values(columnPermissions).some(isEditable => isEditable);
+          
+          return (
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleEditClick(params.data)}
+                disabled={!hasEditableColumns}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
+          );
+        }
+      },
+      ...Object.entries(columnConfigs).map(([field, config]) => ({
+        field,
+        headerName: config.displayName,
+        sortable: true,
+        filter: true,
+        editable: columnPermissions[field] || false,
+        cellStyle: (params: any) => ({
+          backgroundColor: !columnPermissions[field] ? '#f5f5f5' : 'white',
+          cursor: columnPermissions[field] ? 'pointer' : 'not-allowed'
+        })
+      }))
+    ];
+  }, [columnConfigs, handleEditClick, columnPermissions]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg text-gray-600">Loading data...</div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -142,7 +155,7 @@ const GridTable = memo(({
       <div className="flex items-center justify-center h-full">
         <div className="text-lg text-red-600">{error}</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -233,9 +246,7 @@ const GridTable = memo(({
         onSuccess={handleAddSuccess}
       />
     </div>
-  )
-})
+  );
+});
 
-GridTable.displayName = 'GridTable'
-
-export { GridTable }
+GridTable.displayName = 'GridTable';

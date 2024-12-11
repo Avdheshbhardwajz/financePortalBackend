@@ -35,8 +35,10 @@ router.post('/approve', approve);
 router.post('/reject', reject);
 
 //column configuration routes
-router.post('/columnpermission', ColumnPermission);
+router.post('/columnPermission', ColumnPermission);
 router.post('/fetchcolumn', fetchColumn);
+
+
 
 //dropdown configuratuon routes 
 router.post('/fetchcolumnDropdown', fetchColumnDropdown);
