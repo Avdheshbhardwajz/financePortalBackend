@@ -58,6 +58,14 @@ export const GridTable = memo(({
     setIsEditDialogOpen(true);
   }, [columnPermissions]);
 
+  const handleCloseEdit = useCallback(() => {
+    setIsEditDialogOpen(false);
+    setSelectedRow(null);
+    setEditedData(null);
+    setValidationErrors({});
+    setSaveError(null);
+  }, []);
+
   const handleInputChange = useCallback((field: string, value: any) => {
     if (!columnPermissions[field]) return; // Don't allow changes to non-editable fields
     
@@ -77,6 +85,7 @@ export const GridTable = memo(({
 
       setIsSaving(true);
       setSaveError(null);
+      
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
       const payload: RequestDataPayload = {
         table_name: tableName,
@@ -88,17 +97,14 @@ export const GridTable = memo(({
 
       await submitRequestData(payload);
       refreshData();
-      setIsEditDialogOpen(false);
-      setSelectedRow(null);
-      setEditedData(null);
-      setValidationErrors({});
+      handleCloseEdit();
     } catch (error) {
       console.error('Error saving changes:', error);
       setSaveError('Failed to save changes. Please try again.');
     } finally {
       setIsSaving(false);
     }
-  }, [refreshData, selectedRow, editedData, tableName]);
+  }, [refreshData, selectedRow, editedData, tableName, handleCloseEdit]);
 
   const handleAddSuccess = useCallback(() => {
     refreshData();
@@ -133,7 +139,7 @@ export const GridTable = memo(({
         headerName: config.displayName,
         sortable: true,
         filter: true,
-        editable: columnPermissions[field] || false,
+        editable: false, // Disable inline editing
         cellStyle: (params: any) => ({
           backgroundColor: !columnPermissions[field] ? '#f5f5f5' : 'white',
           cursor: columnPermissions[field] ? 'pointer' : 'not-allowed'
@@ -143,19 +149,15 @@ export const GridTable = memo(({
   }, [columnConfigs, handleEditClick, columnPermissions]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-lg text-gray-600">Loading data...</div>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-full">
+      <div className="text-lg text-gray-600">Loading data...</div>
+    </div>;
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-lg text-red-600">{error}</div>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-full">
+      <div className="text-lg text-red-600">{error}</div>
+    </div>;
   }
 
   return (
@@ -223,11 +225,7 @@ export const GridTable = memo(({
 
       <EditDialog
         isOpen={isEditDialogOpen}
-        onClose={() => {
-          setIsEditDialogOpen(false);
-          setSaveError(null);
-          setValidationErrors({});
-        }}
+        onClose={handleCloseEdit}
         selectedRowData={selectedRow}
         editedData={editedData || {}}
         columnConfigs={columnConfigs}
