@@ -2,13 +2,15 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8080';
 
+export type UserRole = 'maker' | 'checker';
+
 export interface User {
   id?: number;
   firstName: string;
   lastName: string;
   email: string;
   password?: string;
-  role: string;
+  role: UserRole;
 }
 
 export const createUser = async (userData: User) => {

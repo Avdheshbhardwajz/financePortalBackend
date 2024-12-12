@@ -19,6 +19,7 @@ import DropdownManager from '@/components/DropdownManager';
 import { createUser, getAllUsers, updateUser, deleteUser, User } from '@/services/userApi';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
+import { UserApiResponse, DialogState } from '@/types/user';
 
 const INITIAL_USER_STATE: User = {
   firstName: '',
@@ -31,6 +32,46 @@ const INITIAL_USER_STATE: User = {
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
+ 
+
+
+  // State management
+  const [users, setUsers] = useState<User[]>([]);
+  const [newUser, setNewUser] = useState<User>(INITIAL_USER_STATE);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dialogState, setDialogState] = useState<DialogState>({
+    delete: { open: false, user: null },
+    edit: { open: false }
+  });
+  const [tables, setTables] = useState<string[]>([]);
+
+  // Load users from backend
+const loadUsers = useCallback(async () => {
+  try {
+    const response = await getAllUsers();
+    if (response.success) {
+      const transformedUsers = response.data.map((user: UserApiResponse) => ({
+        id: user.user_id,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email,
+        role: user.role
+      }));
+      setUsers(transformedUsers);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to load users";
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: errorMessage
+    });
+  }
+}, [toast]);
+
   
   // Check for authentication on component mount
   useEffect(() => {
@@ -39,26 +80,14 @@ const Admin = () => {
       navigate('/login');
     }
     loadUsers();
-  }, []);
+  }, [navigate, loadUsers]);
 
   // Logout handler
   const handleLogout = useCallback(() => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('userData');
     navigate('/login');
-  }, []);
-
-  // State management
-  const [users, setUsers] = useState<User[]>([]);
-  const [newUser, setNewUser] = useState<User>(INITIAL_USER_STATE);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [dialogState, setDialogState] = useState({
-    delete: { open: false, user: null },
-    edit: { open: false }
-  });
-  const [tables, setTables] = useState<string[]>([]);
+  }, [navigate]);
 
   // Fetch tables
   useEffect(() => {
@@ -79,33 +108,13 @@ const Admin = () => {
       }
     };
     fetchTables();
-  }, []);
+  }, [toast]);
 
   // Load users from backend
-  const loadUsers = async () => {
-    try {
-      const response = await getAllUsers();
-      if (response.success) {
-        const transformedUsers = response.data.map((user: any) => ({
-          id: user.user_id,
-          firstName: user.first_name,
-          lastName: user.last_name,
-          email: user.email,
-          role: user.role
-        }));
-        setUsers(transformedUsers);
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to load users"
-      });
-    }
-  };
+
 
   // Form validation
-  const validateForm = useCallback((user: User, isEdit = false) => {
+  const validateForm = useCallback((user: User, isEdit = false): Record<string, string> => {
     const errors: Record<string, string> = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -113,13 +122,41 @@ const Admin = () => {
     if (!user.lastName?.trim()) errors.lastName = 'Last name is required';
     if (!user.email?.trim()) errors.email = 'Email is required';
     if (!emailRegex.test(user.email)) errors.email = 'Invalid email format';
-    if (!isEdit && !user.password) errors.password = 'Password is required';
-    if (!isEdit && user.password?.length < 8) {
+    
+    // Password validation for new users
+  if (!isEdit) {
+    if (!user.password) {
+      errors.password = 'Password is required';
+    } else if (user.password.length < 8) {
       errors.password = 'Password must be at least 8 characters';
     }
-
+  }
     return errors;
   }, []);
+
+   // Render helpers
+   const renderFormInput = useCallback((
+    field: keyof User,
+    label: string,
+    type: string = 'text',
+    value: string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  ) => (
+    <div className="grid gap-2">
+      <Input
+        type={type}
+        placeholder={label}
+        value={value}
+        onChange={onChange}
+        className={errors[field] ? 'border-red-500' : ''}
+        aria-label={label}
+        aria-invalid={!!errors[field]}
+      />
+      {errors[field] && (
+        <p className="text-red-500 text-sm" role="alert">{errors[field]}</p>
+      )}
+    </div>
+  ), [errors]);
 
   // Create user handler
   const handleCreateUser = useCallback(async (e: React.FormEvent) => {
@@ -147,14 +184,15 @@ const Admin = () => {
           description: "User created successfully"
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to perform operation";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to create user"
+        description:  errorMessage
       });
     }
-  }, [newUser, validateForm]);
+  }, [newUser, validateForm , toast, loadUsers]);
 
   // Dialog handlers
   const handleDeleteClick = useCallback((user: User) => {
@@ -192,8 +230,8 @@ const Admin = () => {
     try {
       const response = await updateUser(editingUser.id.toString(), {
         email: editingUser.email,
-        first_name: editingUser.firstName,
-        last_name: editingUser.lastName,
+        firstName: editingUser.firstName,
+        lastName: editingUser.lastName,
         role: editingUser.role,
         password: editingUser.password // Only included if changed
       });
@@ -208,14 +246,15 @@ const Admin = () => {
           description: "User updated successfully"
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update user";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to update user"
+        description: errorMessage
       });
     }
-  }, [editingUser, validateForm]);
+  }, [editingUser, validateForm, toast, loadUsers]);
 
   // Delete user handler
   const handleConfirmDelete = useCallback(async () => {
@@ -235,32 +274,17 @@ const Admin = () => {
           description: "User deleted successfully"
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to perform operation";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to delete user"
+        description: errorMessage
       });
     }
-  }, [dialogState.delete.user]);
+  }, [dialogState.delete.user , toast, loadUsers]);
 
-  // Render helpers
-  const renderFormInput = useCallback((field, label, type = 'text', value, onChange) => (
-    <div className="grid gap-2">
-      <Input
-        type={type}
-        placeholder={label}
-        value={value}
-        onChange={onChange}
-        className={errors[field] ? 'border-red-500' : ''}
-        aria-label={label}
-        aria-invalid={!!errors[field]}
-      />
-      {errors[field] && (
-        <p className="text-red-500 text-sm" role="alert">{errors[field]}</p>
-      )}
-    </div>
-  ), [errors]);
+ 
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -333,7 +357,7 @@ const Admin = () => {
               <div className="space-y-2">
                 <Select
                   value={newUser.role}
-                  onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}
+                  onValueChange={(value: 'maker' | 'checker') => setNewUser(prev => ({ ...prev, role: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
@@ -453,7 +477,7 @@ const Admin = () => {
                 <label htmlFor="edit-role" className="font-poppins">Role</label>
                 <Select
                   value={editingUser?.role || ''}
-                  onValueChange={(value) => setEditingUser(prev => prev ? ({ ...prev, role: value }) : null)}
+                  onValueChange={(value: 'maker' | 'checker') => setEditingUser(prev => prev ? ({ ...prev, role: value }) : null)}
                 >
                   <SelectTrigger className="font-poppins">
                     <SelectValue placeholder="Select role" />
