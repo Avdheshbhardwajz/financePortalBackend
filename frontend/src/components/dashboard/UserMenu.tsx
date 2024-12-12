@@ -23,7 +23,7 @@ export const UserMenu = ({ handleLogout }: UserMenuProps) => (
         <span className="sr-only">Open user menu</span>
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
+    <DropdownMenuContent align="end" className="font-poppins bg-white cursor-pointer">
       <DropdownMenuItem onClick={handleLogout}>
         <LogOut className="mr-2 h-4 w-4" />
         <span>Log out</span>

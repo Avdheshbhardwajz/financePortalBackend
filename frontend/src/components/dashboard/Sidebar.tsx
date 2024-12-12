@@ -18,7 +18,7 @@ export const Sidebar = ({
 }: SidebarProps) => (
   <div className={`bg-white overflow-y-auto custom-scrollbar w-64 shadow-lg transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
     <div className="p-4">
-      <h2 className="text-xl font-semibold text-[#00529B] mb-4">Select Tables</h2>
+      <h2 className="text-xl font-semibold text-[#00529B] mb-4 font-poppins">Select Tables</h2>
       <div className='flex-1 overflow-y-auto custom-scrollbar'>
         {isLoading ? (
           <div className="flex items-center justify-center py-4">

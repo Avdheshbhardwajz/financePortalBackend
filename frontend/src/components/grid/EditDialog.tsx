@@ -73,7 +73,7 @@ export function EditDialog({
                         <SelectTrigger className={validationErrors[field] ? 'border-red-500' : ''}>
                           <SelectValue placeholder="Select an option" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white font-poppins">
+                        <SelectContent className="bg-white font-poppins" >
                           {getDropdownOptionsForColumn(field).map((option) => (
                             <SelectItem key={option} value={option}>
                               {option}
