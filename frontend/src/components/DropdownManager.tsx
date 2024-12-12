@@ -12,6 +12,11 @@ interface DropdownOption {
   value: string;
 }
 
+interface ColumnDropdownOption {
+  columnName: string;
+  options: string[];
+}
+
 interface DropdownManagerProps {
   tables: string[];
 }
@@ -63,30 +68,27 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
   const fetchExistingOptions = async () => {
     try {
       setLoading(true)
-      const response = await axios.post('http://localhost:8080/fetchcolumnDropdown', {
+      const response = await axios.post('http://localhost:8080/fetchColumnDropDown', {
         table_name: selectedTable,
-        column_name: selectedColumn
+        columnName: selectedColumn
       })
 
       if (response.data.success && response.data.data) {
-        // Convert array of options to array of DropdownOption objects
-        const existingOptions = Array.isArray(response.data.data) 
-          ? response.data.data.map((opt: string) => ({ value: opt }))
-          : []
+        const existingOptions = response.data.data.map((opt: string) => ({ value: opt }))
         setOptions(existingOptions)
         if (existingOptions.length > 0) {
           showAlert(`Loaded ${existingOptions.length} existing options`, 'success')
         }
       } else {
         setOptions([])
+        if (response.data.message) {
+          showAlert(response.data.message, 'info')
+        }
       }
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        // No options exist yet for this column
-        setOptions([])
-      } else {
-        showAlert('Error fetching existing options', 'error')
-      }
+      console.error('Error fetching options:', error)
+      showAlert(error.response?.data?.message || 'Error fetching existing options', 'error')
+      setOptions([])
     } finally {
       setLoading(false)
     }
@@ -114,25 +116,54 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
   const handleSaveOptions = async () => {
     try {
       setLoading(true)
-      const response = await axios.post('http://localhost:8080/updatecolumnDropdown', {
+
+      // First, fetch all existing dropdown options for the table
+      const existingOptionsResponse = await axios.post('http://localhost:8080/fetchColumnDropDown', {
         table_name: selectedTable,
-        column_name: selectedColumn,
-        dropdown_options: options.map(opt => opt.value)
-      })
+        columnName: selectedColumn
+      });
+
+      let existingTableOptions: ColumnDropdownOption[] = [];
+      
+      // If we get a success response and have existing options
+      if (existingOptionsResponse.data.success && existingOptionsResponse.data.data) {
+        // Keep the existing options for other columns
+        existingTableOptions = existingOptionsResponse.data.dropdown_options || [];
+      }
+
+      // Remove any existing options for the current column (if they exist)
+      existingTableOptions = existingTableOptions.filter(
+        option => option.columnName !== selectedColumn
+      );
+
+      // Add the new options for the current column
+      const newColumnOption: ColumnDropdownOption = {
+        columnName: selectedColumn,
+        options: options.map(opt => opt.value)
+      };
+
+      // Combine existing and new options
+      const allOptions = [...existingTableOptions, newColumnOption];
+
+      // Save all options
+      const response = await axios.post('http://localhost:8080/updateColumnDropDown', {
+        table_name: selectedTable,
+        dropdown_options: allOptions
+      });
 
       if (response.data.success) {
-        showAlert('Options saved successfully', 'success')
-        // Refresh the options after saving
-        fetchExistingOptions()
+        showAlert('Options saved successfully', 'success');
+        fetchExistingOptions();
       } else {
-        showAlert(response.data.message || 'Failed to save options', 'error')
+        showAlert(response.data.message || 'Failed to save options', 'error');
       }
-    } catch (error) {
-      showAlert('Error saving options', 'error')
+    } catch (error: any) {
+      console.error('Error saving options:', error);
+      showAlert(error.response?.data?.message || 'Error saving options', 'error');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const showAlert = (message: string, type: 'error' | 'success' | 'info') => {
     setAlert({ show: true, message, type })
@@ -159,7 +190,7 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
 
         <div className="space-y-6">
           {/* Table Selection */}
-          <div className="space-y-2">
+          <div className="space-y-2 font-poppins">
             <Label>Select Table</Label>
             <Select value={selectedTable} onValueChange={(value) => {
               setSelectedTable(value)
@@ -169,7 +200,7 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
               <SelectTrigger>
                 <SelectValue placeholder="Select a table" />
               </SelectTrigger>
-              <SelectContent className='bg-white'>
+              <SelectContent className='bg-white font-poppins'>
                 {tables.map((table) => (
                   <SelectItem key={table} value={table}>
                     {table}
@@ -190,7 +221,7 @@ export default function DropdownManager({ tables = [] }: DropdownManagerProps) {
                 <SelectTrigger>
                   <SelectValue placeholder="Select a column" />
                 </SelectTrigger>
-                <SelectContent className='bg-white'>
+                <SelectContent className='bg-white font-poppins'>
                   {columns.map((column) => (
                     <SelectItem key={column} value={column}>
                       {column}

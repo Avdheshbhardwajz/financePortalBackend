@@ -11,8 +11,9 @@ const { reject } = require('../controllers/reject/reject.js');
 const { tableData } = require('../controllers/tableData/tableData.js');
 const { ColumnPermission } = require('../controllers/ColumnPermission/ColumnPermission.js');
 const { fetchColumn } = require('../controllers/fetchColumn/fetchColumn.js');
-const {fetchColumnDropdown} = require('../controllers/fetchColumnDropdown/fetchColumnDropdown.js');
-const {updateColumnDropdown} = require('../controllers/updateColumnDropdown/updateColumnDropdown.js');
+const { fetchColumnDropDown } = require('../controllers/fetchColumnDropdown/fetchColumnDropdown.js');
+const { updateColumnDropDown } = require('../controllers/updateColumnDropdown/updateColumnDropdown.js');
+const { fetchColumnStatus } = require('../controllers/fetchColumnStatus/fetchColumnStatus.js');
 
 // Authentication routes
 router.post('/signin', signin);
@@ -38,10 +39,9 @@ router.post('/reject', reject);
 router.post('/columnPermission', ColumnPermission);
 router.post('/fetchcolumn', fetchColumn);
 
-
-
 //dropdown configuratuon routes 
-router.post('/fetchcolumnDropdown', fetchColumnDropdown);
-router.post('/updatecolumnDropdown', updateColumnDropdown);
+router.post('/fetchColumnDropDown', fetchColumnDropDown);
+router.post('/updateColumnDropDown', updateColumnDropDown);
+router.post('/fetchColumnStatus', fetchColumnStatus);
 
 module.exports = router;
