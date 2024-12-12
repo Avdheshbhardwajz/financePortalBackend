@@ -14,7 +14,7 @@ const { fetchColumn } = require('../controllers/fetchColumn/fetchColumn.js');
 const { fetchColumnDropDown } = require('../controllers/fetchColumnDropdown/fetchColumnDropdown.js');
 const { updateColumnDropDown } = require('../controllers/updateColumnDropdown/updateColumnDropdown.js');
 const { fetchColumnStatus } = require('../controllers/fetchColumnStatus/fetchColumnStatus.js');
-
+const { fetchDropdownOptions } = require('../controllers/fetchDropdownOptions/fetchDropdownOptions.js');
 // Authentication routes
 router.post('/signin', signin);
 router.post('/signup', createUser);
@@ -43,5 +43,6 @@ router.post('/fetchcolumn', fetchColumn);
 router.post('/fetchColumnDropDown', fetchColumnDropDown);
 router.post('/updateColumnDropDown', updateColumnDropDown);
 router.post('/fetchColumnStatus', fetchColumnStatus);
+router.post('/fetchDropdownOptions', fetchDropdownOptions);
 
 module.exports = router;

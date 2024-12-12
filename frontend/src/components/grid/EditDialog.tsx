@@ -5,6 +5,12 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from 'lucide-react'
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface DropdownOption {
+  columnName: string;
+  options: string[];
+}
 
 interface EditDialogProps {
   isOpen: boolean
@@ -17,6 +23,7 @@ interface EditDialogProps {
   onInputChange: (field: string, value: any) => void
   isSaving: boolean
   error: string | null
+  dropdownOptions: DropdownOption[]
 }
 
 export function EditDialog({
@@ -29,9 +36,18 @@ export function EditDialog({
   onSave,
   onInputChange,
   isSaving,
-  error
+  error,
+  dropdownOptions
 }: EditDialogProps) {
   if (!selectedRowData || !editedData) return null;
+
+  const getDropdownOptionsForColumn = (columnName: string) => {
+    return dropdownOptions.find(opt => opt.columnName === columnName)?.options || [];
+  };
+
+  const isDropdownColumn = (columnName: string) => {
+    return dropdownOptions.some(opt => opt.columnName === columnName);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -48,13 +64,32 @@ export function EditDialog({
                     {config.displayName}
                   </Label>
                   <div className="col-span-3">
-                    <Input
-                      id={field}
-                      value={editedData[field] || ''}
-                      onChange={(e) => onInputChange(field, e.target.value)}
-                      className={`${validationErrors[field] ? 'border-red-500' : ''} ${config.readOnly ? 'bg-gray-100' : ''}`}
-                      disabled={config.readOnly}
-                    />
+                    {isDropdownColumn(field) ? (
+                      <Select
+                        value={editedData[field] || ''}
+                        onValueChange={(value) => onInputChange(field, value)}
+                        disabled={config.readOnly}
+                      >
+                        <SelectTrigger className={validationErrors[field] ? 'border-red-500' : ''}>
+                          <SelectValue placeholder="Select an option" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white font-poppins">
+                          {getDropdownOptionsForColumn(field).map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={field}
+                        value={editedData[field] || ''}
+                        onChange={(e) => onInputChange(field, e.target.value)}
+                        className={`${validationErrors[field] ? 'border-red-500' : ''} ${config.readOnly ? 'bg-gray-100' : ''}`}
+                        disabled={config.readOnly}
+                      />
+                    )}
                     {validationErrors[field] && (
                       <span className="text-sm text-red-500">
                         {validationErrors[field]}

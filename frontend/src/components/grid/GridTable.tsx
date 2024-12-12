@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, memo } from 'react'
+import { useMemo, useState, useCallback, memo, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -11,6 +11,12 @@ import { useGridData } from '@/hooks/useGridData'
 import { submitRequestData } from '@/services/api'
 import { RequestDataPayload } from '@/types/requestData'
 import { toast } from '@/hooks/use-toast'
+import axios from 'axios'
+
+interface DropdownOption {
+  columnName: string;
+  options: string[];
+}
 
 interface GridTableProps {
   tableName: string
@@ -40,6 +46,28 @@ export const GridTable = memo(({
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>([]);
+
+  // Fetch dropdown options when table name changes
+  useEffect(() => {
+    const fetchDropdownOptions = async () => {
+      try {
+        const response = await axios.post('http://localhost:8080/fetchDropdownOptions', {
+          table_name: tableName
+        });
+        
+        if (response.data.success && response.data.data) {
+          setDropdownOptions(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching dropdown options:', error);
+      }
+    };
+
+    if (tableName) {
+      fetchDropdownOptions();
+    }
+  }, [tableName]);
 
   const handleEditClick = useCallback((row: any) => {
     const hasEditableColumns = Object.values(columnPermissions).some(isEditable => isEditable);
@@ -161,7 +189,7 @@ export const GridTable = memo(({
   }
 
   return (
-    <div className="flex flex-col gap-4 font-poppins">
+    <div className="w-full h-full flex flex-col gap-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold capitalize">{tableName.replace(/_/g, ' ')}</h2>
         <Button onClick={() => setIsAddDialogOpen(true)}>
@@ -227,13 +255,14 @@ export const GridTable = memo(({
         isOpen={isEditDialogOpen}
         onClose={handleCloseEdit}
         selectedRowData={selectedRow}
-        editedData={editedData || {}}
+        editedData={editedData}
         columnConfigs={columnConfigs}
         validationErrors={validationErrors}
         onSave={handleEditSave}
         onInputChange={handleInputChange}
         isSaving={isSaving}
         error={saveError}
+        dropdownOptions={dropdownOptions}
       />
 
       <AddDialog
