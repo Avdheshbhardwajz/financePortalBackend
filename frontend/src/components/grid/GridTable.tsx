@@ -161,7 +161,7 @@ export const GridTable = memo(({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 font-poppins">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold capitalize">{tableName.replace(/_/g, ' ')}</h2>
         <Button onClick={() => setIsAddDialogOpen(true)}>
@@ -171,7 +171,7 @@ export const GridTable = memo(({
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="ag-theme-alpine w-full h-[calc(100vh-16rem)]">
+        <div className="ag-theme-alpine w-full h-[calc(100vh-16rem)] font-poppins">
           <AgGridReact
             rowData={rowData}
             columnDefs={columnDefs}

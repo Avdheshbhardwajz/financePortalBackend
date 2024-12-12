@@ -35,7 +35,7 @@ export function EditDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-white font-poppins h-[80vh] p-0 flex flex-col">
+      <DialogContent className="sm:max-w-[40%] min-w-[450px] bg-white font-poppins h-[80vh] p-0 flex flex-col">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>Edit Row</DialogTitle>
         </DialogHeader>
@@ -52,7 +52,7 @@ export function EditDialog({
                       id={field}
                       value={editedData[field] || ''}
                       onChange={(e) => onInputChange(field, e.target.value)}
-                      className={validationErrors[field] ? 'border-red-500' : ''}
+                      className={`${validationErrors[field] ? 'border-red-500' : ''} ${config.readOnly ? 'bg-gray-100' : ''}`}
                       disabled={config.readOnly}
                     />
                     {validationErrors[field] && (
@@ -90,4 +90,3 @@ export function EditDialog({
     </Dialog>
   );
 }
-
