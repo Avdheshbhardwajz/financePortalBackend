@@ -6,26 +6,33 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from 'lucide-react'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
+import { ColumnConfig } from "@/types/grid"
 interface DropdownOption {
   columnName: string;
   options: string[];
 }
-
-interface EditDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  selectedRowData: any
-  editedData: any
-  columnConfigs: { [key: string]: any }
-  validationErrors: { [key: string]: string }
-  onSave: () => void
-  onInputChange: (field: string, value: any) => void
-  isSaving: boolean
-  error: string | null
-  dropdownOptions: DropdownOption[]
+interface RowData {
+  [key: string]: string | number | boolean | null;
 }
 
+interface ColumnConfiguration extends ColumnConfig {
+  displayName: string;
+  readOnly?: boolean;
+}
+
+interface EditDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedRowData: RowData | null;
+  editedData: RowData | null;
+  columnConfigs: { [key: string]: ColumnConfiguration };
+  validationErrors: { [key: string]: string };
+  onSave: () => void;
+  onInputChange: (field: string, value: string) => void;
+  isSaving: boolean;
+  error: string | null;
+  dropdownOptions: DropdownOption[];
+}
 export function EditDialog({
   isOpen,
   onClose,
@@ -66,7 +73,7 @@ export function EditDialog({
                   <div className="col-span-3">
                     {isDropdownColumn(field) ? (
                       <Select
-                        value={editedData[field] || ''}
+                        value={String(editedData[field] || '')}
                         onValueChange={(value) => onInputChange(field, value)}
                         disabled={config.readOnly}
                       >
@@ -84,7 +91,7 @@ export function EditDialog({
                     ) : (
                       <Input
                         id={field}
-                        value={editedData[field] || ''}
+                        value={String(editedData[field] || '')}
                         onChange={(e) => onInputChange(field, e.target.value)}
                         className={`${validationErrors[field] ? 'border-red-500' : ''} ${config.readOnly ? 'bg-gray-100' : ''}`}
                         disabled={config.readOnly}
