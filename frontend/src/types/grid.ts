@@ -9,6 +9,7 @@ export type EditType = 'text' | 'date calendar' | 'number' | 'dropdown' | 'email
 export interface ColumnConfig {
   field: string
   headerName?: string
+  displayName?: string
   isEditable?: boolean
   editType?: EditType
   width?: number

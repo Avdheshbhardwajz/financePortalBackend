@@ -80,9 +80,11 @@ export const useGridData = ({ tableName, initialPageSize = 20 }: UseGridDataProp
   const createColumnConfigs = useCallback((data: RowData) => {
     const configs: Record<string, ColumnConfig> = {}
     Object.keys(data).forEach(header => {
+      const formattedHeader = formatHeaderName(header)
       configs[header] = {
         field: header,
-        headerName: formatHeaderName(header),
+        headerName: formattedHeader,
+        displayName: formattedHeader,  
         isEditable: false,
         editType: getColumnEditType(header)
       }
