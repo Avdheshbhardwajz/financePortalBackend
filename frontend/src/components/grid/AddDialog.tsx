@@ -5,11 +5,12 @@ import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { submitRequestData } from '@/services/api'
 import { RequestDataPayload } from '@/types/requestData'
+import { ColumnConfig, RowData } from '@/types/grid'
 
 interface AddDialogProps {
   isOpen: boolean
   onClose: () => void
-  columnConfigs: any
+  columnConfigs: Record<string, ColumnConfig>
   tableName: string
   onSuccess: () => void
 }
@@ -21,12 +22,12 @@ export const AddDialog = ({
   tableName,
   onSuccess,
 }: AddDialogProps) => {
-  const [newData, setNewData] = useState<any>({})
+  const [newData, setNewData] = useState<RowData>({})
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
-  const handleFieldChange = (field: string, value: any) => {
-    setNewData((prev: any) => ({
+  const handleFieldChange = (field: string, value: unknown) => {
+    setNewData((prev: RowData) => ({
       ...prev,
       [field]: value,
     }))
@@ -45,7 +46,7 @@ export const AddDialog = ({
         table_name: tableName,
         old_values: {}, // Empty object for new records
         new_values: newData,
-        maker_id: userData.user_id, // Using default user ID temporarily
+        maker_id: userData.user_id,
         comments: 'New record added'
       }
 
@@ -57,11 +58,15 @@ export const AddDialog = ({
       })
       onSuccess()
       handleClose()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to add record"
+      
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.response?.data?.message || "Failed to add record",
+        description: errorMessage,
       })
     } finally {
       setIsSaving(false)
@@ -77,7 +82,7 @@ export const AddDialog = ({
         <div className="grid gap-6 py-4 font-poppins">
           {Object.entries(columnConfigs)
             .filter(([field]) => field !== 'id' && field !== 'dim_branch_sk' && columnConfigs[field].isEditable !== false)
-            .map(([field, config]: [string, any]) => (
+            .map(([field, config]) => (
               <EditField
                 key={field}
                 field={field}
