@@ -5,7 +5,7 @@ exports.requestData = async (req, res) => {
     // const userId = uuidv4();
     const {
         request_id,
-        table_id,
+       
         table_name,
         row_id,
         old_values,
@@ -33,7 +33,7 @@ exports.requestData = async (req, res) => {
         const insertQuery = `
             INSERT INTO app.change_tracker (
                 request_id,
-                table_id,
+               
                 table_name,
                 row_id,
                 old_data,
@@ -45,13 +45,12 @@ exports.requestData = async (req, res) => {
                 updated_at,
                 comments
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8 ,  NOW(), NOW(), $9)
             RETURNING *;
         `;
 
         const values = [
             request_id || uuidv4(),
-            table_id || null,
             table_name,
             row_id || null,
             old_values ? JSON.stringify(old_values) : null,

@@ -20,7 +20,12 @@ export const useTables = () => {
         throw new Error('Invalid response format')
       }
 
-      const fetchedTables: TableInfo[] = response.data.tables.map((row) => {
+      const fetchedTables: TableInfo[] = response.data.tables
+      .filter((row) => {
+        const tableName = row.table_name.toLowerCase();
+        return !['change_tracker', 'column_permission', 'dynamic_dropdowns', 'users'].includes(tableName);
+      })
+      .map((row) => {
         if (!row?.table_name) {
           throw new Error('Invalid table data format')
         }
@@ -35,9 +40,9 @@ export const useTables = () => {
       const error = err as Error | { response?: { data?: { error?: string } } }
       console.error('Error fetching tables:', error)
       
-      const errorMessage = 'response' in error 
-        ? error.response?.data?.error || 'Failed to load tables'
-        : error.message || 'Failed to load tables'
+      const errorMessage = 'response' in error && error.response?.data?.error 
+      ? error.response.data.error 
+      : (error instanceof Error ? error.message : 'Failed to load tables')
       
       setError(errorMessage)
       toast({
