@@ -1,38 +1,42 @@
-import { Clock } from 'lucide-react'
-import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { CellRendererProps } from '@/types/grid'
-import { formatDate, isValidDateString } from '@/utils/dateUtils'
+import { Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ICellRendererParams } from "ag-grid-community";
 
-interface CellRendererProps extends CustomCellRendererParams {
-  isPending: boolean
-  isDateField?: boolean
-  editType?: string
+interface CellRendererProps extends ICellRendererParams {
+  isPending?: boolean;
+  isDateField?: boolean;
+  editType?: string;
+  value: string | number | null | undefined;
 }
 
-export const CellRenderer = ({ value, isPending, isDateField, editType }: CellRendererProps) => {
+export const CellRenderer = ({
+  value,
+  isPending = false,
+  isDateField = false,
+  editType,
+}: CellRendererProps) => {
   const formatValue = () => {
-    if (!value && value !== 0) return '-'
+    if (!value && value !== 0) return "-";
 
     if (isDateField) {
       try {
-        const date = new Date(value)
-        return date.toLocaleDateString()
-      } catch (e) {
-        return value
+        const date = new Date(value);
+        return date.toLocaleDateString();
+      } catch {
+        return value;
       }
     }
 
-    if (editType === 'number') {
-      return typeof value === 'number' ? value.toLocaleString() : value
+    if (editType === "number") {
+      return typeof value === "number" ? value.toLocaleString() : value;
     }
 
-    return value
-  }
+    return value;
+  };
 
   return (
     <div className="flex items-center gap-2">
-      <span className={isPending ? 'text-blue-600 font-medium' : ''}>
+      <span className={isPending ? "text-blue-600 font-medium" : ""}>
         {formatValue()}
       </span>
       {isPending && (
@@ -41,5 +45,5 @@ export const CellRenderer = ({ value, isPending, isDateField, editType }: CellRe
         </Badge>
       )}
     </div>
-  )
-}
+  );
+};
