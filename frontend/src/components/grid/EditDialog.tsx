@@ -1,12 +1,23 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from 'lucide-react'
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ColumnConfig } from "@/types/grid"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ColumnConfig } from "@/types/grid";
 interface DropdownOption {
   columnName: string;
   options: string[];
@@ -15,17 +26,12 @@ interface RowData {
   [key: string]: string | number | boolean | null;
 }
 
-interface ColumnConfiguration extends ColumnConfig {
-  displayName: string;
-  readOnly?: boolean;
-}
-
 interface EditDialogProps {
   isOpen: boolean;
   onClose: () => void;
   selectedRowData: RowData | null;
   editedData: RowData | null;
-  columnConfigs: { [key: string]: ColumnConfiguration };
+  columnConfigs: { [key: string]: ColumnConfig };
   validationErrors: { [key: string]: string };
   onSave: () => void;
   onInputChange: (field: string, value: string) => void;
@@ -44,16 +50,19 @@ export function EditDialog({
   onInputChange,
   isSaving,
   error,
-  dropdownOptions
+  dropdownOptions,
 }: EditDialogProps) {
   if (!selectedRowData || !editedData) return null;
 
   const getDropdownOptionsForColumn = (columnName: string) => {
-    return dropdownOptions.find(opt => opt.columnName === columnName)?.options || [];
+    return (
+      dropdownOptions.find((opt) => opt.columnName === columnName)?.options ||
+      []
+    );
   };
 
   const isDropdownColumn = (columnName: string) => {
-    return dropdownOptions.some(opt => opt.columnName === columnName);
+    return dropdownOptions.some((opt) => opt.columnName === columnName);
   };
 
   return (
@@ -66,21 +75,28 @@ export function EditDialog({
           <ScrollArea className="h-full px-6 py-2">
             <div className="grid gap-4">
               {Object.entries(columnConfigs).map(([field, config]) => (
-                <div key={field} className="grid grid-cols-4 items-center gap-4">
+                <div
+                  key={field}
+                  className="grid grid-cols-4 items-center gap-4"
+                >
                   <Label htmlFor={field} className="text-right">
                     {config.displayName}
                   </Label>
                   <div className="col-span-3">
                     {isDropdownColumn(field) ? (
                       <Select
-                        value={String(editedData[field] || '')}
+                        value={String(editedData[field] || "")}
                         onValueChange={(value) => onInputChange(field, value)}
                         disabled={config.readOnly}
                       >
-                        <SelectTrigger className={validationErrors[field] ? 'border-red-500' : ''}>
+                        <SelectTrigger
+                          className={
+                            validationErrors[field] ? "border-red-500" : ""
+                          }
+                        >
                           <SelectValue placeholder="Select an option" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white font-poppins" >
+                        <SelectContent className="bg-white font-poppins">
                           {getDropdownOptionsForColumn(field).map((option) => (
                             <SelectItem key={option} value={option}>
                               {option}
@@ -91,9 +107,11 @@ export function EditDialog({
                     ) : (
                       <Input
                         id={field}
-                        value={String(editedData[field] || '')}
+                        value={String(editedData[field] || "")}
                         onChange={(e) => onInputChange(field, e.target.value)}
-                        className={`${validationErrors[field] ? 'border-red-500' : ''} ${config.readOnly ? 'bg-gray-100' : ''}`}
+                        className={`${
+                          validationErrors[field] ? "border-red-500" : ""
+                        } ${config.readOnly ? "bg-gray-100" : ""}`}
                         disabled={config.readOnly}
                       />
                     )}
@@ -124,7 +142,7 @@ export function EditDialog({
                 Saving...
               </>
             ) : (
-              'Save Changes'
+              "Save Changes"
             )}
           </Button>
         </div>
