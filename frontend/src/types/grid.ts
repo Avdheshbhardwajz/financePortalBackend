@@ -1,5 +1,3 @@
-import { ICellRendererParams } from "ag-grid-community";
-
 export interface GridTableProps {
   tableName: string;
 }
@@ -22,6 +20,7 @@ export interface ColumnConfig {
   valueFormatter?: (value: any) => string;
   valueGetter?: (params: any) => any;
   hide?: boolean;
+  readOnly?: boolean;
 }
 
 export interface ValidationError {
@@ -96,4 +95,12 @@ export interface PendingChange {
   oldValue: any;
   newValue: any;
   timestamp: number;
+}
+
+export interface EditFieldProps {
+  field: string;
+  value: any;
+  validation?: ValidationError;
+  config: ColumnConfig;
+  onChange: (field: string, value: any) => void;
 }
